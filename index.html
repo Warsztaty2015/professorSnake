@@ -10,107 +10,194 @@
   <div id="screen"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/two.js/0.4.0/two.js"></script>
   <script>
-    var main = function(){
-    var twoLibraryParams = {
-      width: 800,
-      height: 600
-    };
+    var main = function() {
+      var twoLibraryParams = {
+        width: 800,
+        height: 600
+      };
+      
+      var boardSize = {
+        width: 40,
+        height: 30
+      };
+      
+      var fieldColors = {
+        "empty": "grey",
+        "snake": "green",
+        "apple": "red"
+      };
+      
+      var directions = {
+        "left": [-1, 0],
+        "right": [1, 0],
+        "up": [0, -1],
+        "down": [0, 1]
+      };
+      
+      var reverseDirections = {
+        "left": "right",
+        "right": "left",
+        "up": "down",
+        "down": "up"
+      }
+      
+      var snake = [[0, Math.floor(boardSize.height/2)]];
+      
+      var apples = []
+      
+      var maxLength = 8;
+      
+      var movesPerSecond = 12;
+  
+      var two = new Two(twoLibraryParams);
+      
+      var background = two.makeGroup();
 
-    var boardSize = {
-      width: 40,
-      height: 30
-    };
-    
-    var fieldColors = {
-      "empty": "grey",
-      "snake": "green",
-      "food": "yellow"
-    };
-    
-    var directions = {
-      "left": [-1, 0],
-      "right": [1, 0],
-      "up": [0, -1],
-      "down": [0, 1]
-    };
-    
-    var snake = [[0,0]];
-    
-    
-    var maxLength = 8;
+      var appleGroup = two.makeGroup();
+  
+      var snakeGroup = two.makeGroup();
+      
+      var currentDirection = "right";
 
-    var two = new Two(twoLibraryParams);
-
-    var snakeGroup = two.makeGroup();
-    
-    var currentDirection = "right";
-
-    var growSnake = function(eventBuffer) {
-      for(var i = 0; i < eventBuffer.length; i = i + 1) {
-        if (eventBuffer[i] in directions){
-          currentDirection = eventBuffer.pop(i);
-          break;
+      var isApple = function(coords) {
+        var toReturn = false;
+        apples.forEach(function(position) {
+          if (position[0] == coords[0] &&
+              position[1] == coords[1]) {
+              toReturn = true;
+            }
+        });
+        return toReturn;
+      }
+      
+      var removeApple = function(coords) {
+        var toReturn = false;
+        var i = 0;
+        apples.forEach(function(position) {
+          i += 1;
+          if (position[0] == coords[0] &&
+              position[1] == coords[1]) {
+              toReturn = true;
+              apples = Array.prototype.concat(apples.splice(0, i), apples.splice(i + 1, apples.length));
+            }
+        });
+        return toReturn;
+      }
+      
+      var growSnake = function(direction) {
+        var newX = (((snake[snake.length - 1][0] + directions[direction][0])) % boardSize.width + boardSize.width) % boardSize.width;
+        var newY = ((snake[snake.length - 1][1] + directions[direction][1]) % boardSize.height + boardSize.height) % boardSize.height;
+        var newPosition = [newX, newY];
+        var ate = false;
+        if (isApple(newPosition)){
+          maxLength = maxLength + 1;
+          removeApple(newPosition);
+          showApples();
         }
-      }
-      var newX = ((snake[snake.length - 1][0] + directions[currentDirection][0])) % boardSize.width;
-      var newY = (snake[snake.length - 1][1] + directions[currentDirection][1]) % boardSize.height;
-      var newPosition = [newX, newY];
-      snake.push(newPosition);
-      if(snake.length > maxLength) {
-        snake = snake.slice(snake.length - maxLength, snake.length);
-      }
-    };
-
-    
-    var makeRectangle = function(topLeftX, topLeftY, width, height) {
-      var right = topLeftX + width;
-      var bottom = topLeftY + height;
-      return two.makePolygon(topLeftX, topLeftY,
-                             right, topLeftY,
-                             right, bottom,
-                             topLeftX, bottom);
-    };
-    
-    var makeTile = function(xy) {
-      var tileWidth = twoLibraryParams.width/boardSize.width;
-      var tileHeight = twoLibraryParams.height/boardSize.height;
-      return makeRectangle(xy[0]*tileWidth, xy[1]*tileHeight, tileWidth, tileHeight);
-    };
-    
-    var init = function() {
-      var screen = makeRectangle(0, 0,
-                                 twoLibraryParams.width, twoLibraryParams.height);
-      screen.noStroke();
-      screen.fill = "grey";
-    };
-
-
-    var showSnake = function() {
-      snakeGroup.remove(snakeGroup.children);
-      snake.forEach(function(coords){
-        var snakeSegment = makeTile(coords);
-        snakeSegment.addTo(snakeGroup);
-        snakeSegment.fill = fieldColors["snake"];
-      });
-    };
+        snake.push(newPosition);
+        if(snake.length > maxLength) {
+          snake = snake.slice(snake.length - maxLength, snake.length);
+        }
+      };
       
-    window.onload = function() {
-      var screen = document.getElementById("screen");
-      two.appendTo(screen);
-      //init();
-      two.bind('update', function(frameCount) {
-        growSnake([]);
-        showSnake();
-      }).play();
+      var newApple = function() {
+        var x = Math.floor(Math.random()*boardSize.width);
+        var y = Math.floor(Math.random()*boardSize.height);
+        if (!(isApple([x, y]))) {
+          apples.push([x, y]);
+        } else {
+          newApple();
+        }
+        showApples();
+      };
       
-      /*growSnake([]);
-      growSnake([]);
-      growSnake([]);
-      showSnake();
-      two.update();
-      showSnake();
-      two.update();*/
-    };
+      var makeRectangle = function(topLeftX, topLeftY, width, height) {
+        var right = topLeftX + width;
+        var bottom = topLeftY + height;
+        return two.makePolygon(topLeftX, topLeftY,
+                               right, topLeftY,
+                               right, bottom,
+                               topLeftX, bottom);
+      };
+      
+      var makeTile = function(xy) {
+        var tileWidth = twoLibraryParams.width/boardSize.width;
+        var tileHeight = twoLibraryParams.height/boardSize.height;
+        return makeRectangle(xy[0]*tileWidth, xy[1]*tileHeight, tileWidth, tileHeight);
+      };
+      
+      var drawBoard = function() {
+        var screen = makeRectangle(0, 0,
+                                   twoLibraryParams.width, twoLibraryParams.height);
+        screen.addTo(background);
+        screen.noStroke();
+        screen.fill = "grey";
+      };
+      
+      var showSnake = function() {
+        snakeGroup.remove(_.values(snakeGroup.children));
+        snake.forEach(function(coords){
+          var snakeSegment = makeTile(coords);
+          snakeSegment.addTo(snakeGroup);
+          snakeSegment.fill = fieldColors["snake"];
+        });
+      };
+      
+      var showApples = function() {
+        appleGroup.remove(_.values(appleGroup.children));
+        apples.forEach(function(coords){
+          var apple = makeTile(coords);
+          apple.addTo(appleGroup);
+          apple.fill = fieldColors["apple"]
+          apple.noStroke();
+        });
+      }
+
+      var lastAnimationTime;
+
+      var processEvent = function(event) {
+        if (event in directions) {
+          if (event !== reverseDirections[currentDirection] && event !== currentDirection) {
+            currentDirection = event;
+            growSnake(currentDirection);
+            showSnake();
+            lastAnimationTime = (new Date()).getTime();
+          }
+        }
+      };
+      
+      var eventToDirection = {37: "left", 38: "up", 39: "right", 40: "down"};
+      
+      window.onkeydown = function(event) {
+        if (event.which in eventToDirection) {
+          event.preventDefault();
+          processEvent(eventToDirection[event.which]);
+        }
+      };
+
+      var frame = function(frameCount) {
+        var thisAnimationTime = (new Date()).getTime();
+        var timeDifference = thisAnimationTime - lastAnimationTime;
+        console.log(thisAnimationTime);
+        if (timeDifference > 1000/movesPerSecond){
+          growSnake(currentDirection);
+          showSnake();
+          lastAnimationTime = thisAnimationTime;
+        }
+        if(frameCount % 100 == 0){
+          newApple();
+        }
+      };
+      
+      window.onload = function() {
+        var screen = document.getElementById("screen");
+        two.appendTo(screen);
+        drawBoard();
+        two.bind('update', frame);
+        lastAnimationTime = (new Date()).getTime();
+        two.play();
+        
+      };
     };
     main();
   </script>
