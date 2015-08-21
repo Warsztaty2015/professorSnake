@@ -10,85 +10,109 @@
   <div id="screen"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/two.js/0.4.0/two.js"></script>
   <script>
+    var main = function(){
     var twoLibraryParams = {
       width: 800,
       height: 600
     };
 
     var boardSize = {
-      width: 30,
-      height: 40
-    };
-    
-    var fieldTypes = {
-      "empty": 0,
-      "snakeBody": 1,
-      "snakeHead": 2,
-      "food": 3
+      width: 40,
+      height: 30
     };
     
     var fieldColors = {
       "empty": "grey",
-      "snakeBody": "green",
-      "snakeHead": "lightgreen",
+      "snake": "green",
       "food": "yellow"
     };
     
-    // initialised by init
-    var revFieldTypes = {};
-
-    // initialised by
-    var board = [];
-    
-    var snake = [];
-
-    var boardIterator = function(forEachElement) {
-      board.forEach(
-        function(row){
-          row.forEach(function(elem){
-            forEachElement(elem);
-          });
-        });
+    var directions = {
+      "left": [-1, 0],
+      "right": [1, 0],
+      "up": [0, -1],
+      "down": [0, 1]
     };
     
-    var makeTile = function(x, y, two){
-      var tileWidth = twoLibraryParams.width/boardSize.width;
-      var tileHeight = twoLibraryParams.height/boardSize.height;
-      return two.makePolygon(tileWidth*x, tileHeight*y,
-                             tileWidth*(x+1), tileHeight*(y),
-                             tileWidth*(x+1), tileHeight*(y+1),
-                             tileWidth*(x), tileHeight*(y+1));
-    };
+    var snake = [[0,0]];
     
-    var init = function(two) {
-      for (var key in fieldTypes) {
-        revFieldTypes[fieldTypes[key]] = key;
-      }
-      for(var i = 0; i < boardSize.width; i++){
-        var row = [];
-        board.push(row);
-        for(var j = 0; j < boardSize.height; j++){
-          row.push(fieldTypes.empty);
-          var rect = makeTile(i, j, two);
-          rect.fill = fieldColors["empty"];
+    
+    var maxLength = 8;
+
+    var two = new Two(twoLibraryParams);
+
+    var snakeGroup = two.makeGroup();
+    
+    var currentDirection = "right";
+
+    var growSnake = function(eventBuffer) {
+      for(var i = 0; i < eventBuffer.length; i = i + 1) {
+        if (eventBuffer[i] in directions){
+          currentDirection = eventBuffer.pop(i);
+          break;
         }
       }
-      two.update();
+      var newX = ((snake[snake.length - 1][0] + directions[currentDirection][0])) % boardSize.width;
+      var newY = (snake[snake.length - 1][1] + directions[currentDirection][1]) % boardSize.height;
+      var newPosition = [newX, newY];
+      snake.push(newPosition);
+      if(snake.length > maxLength) {
+        snake = snake.slice(snake.length - maxLength, snake.length);
+      }
     };
 
     
-    boardIterator(function(elem){console.log(elem)});
+    var makeRectangle = function(topLeftX, topLeftY, width, height) {
+      var right = topLeftX + width;
+      var bottom = topLeftY + height;
+      return two.makePolygon(topLeftX, topLeftY,
+                             right, topLeftY,
+                             right, bottom,
+                             topLeftX, bottom);
+    };
+    
+    var makeTile = function(xy) {
+      var tileWidth = twoLibraryParams.width/boardSize.width;
+      var tileHeight = twoLibraryParams.height/boardSize.height;
+      return makeRectangle(xy[0]*tileWidth, xy[1]*tileHeight, tileWidth, tileHeight);
+    };
+    
+    var init = function() {
+      var screen = makeRectangle(0, 0,
+                                 twoLibraryParams.width, twoLibraryParams.height);
+      screen.noStroke();
+      screen.fill = "grey";
+    };
+
+
+    var showSnake = function() {
+      snakeGroup.remove(snakeGroup.children);
+      snake.forEach(function(coords){
+        var snakeSegment = makeTile(coords);
+        snakeSegment.addTo(snakeGroup);
+        snakeSegment.fill = fieldColors["snake"];
+      });
+    };
+      
     window.onload = function() {
       var screen = document.getElementById("screen");
-      var two = new Two(twoLibraryParams);
       two.appendTo(screen);
-      init(two);
-      //var circle = two.makeRectangle(70, 100, 200, 200);
-      two.update()
-      //circle.fill = '#FF8000';
-      //circle.stroke = 'orangered'; // Accepts all valid css color
-      //circle.linewidth = 5;
+      //init();
+      two.bind('update', function(frameCount) {
+        growSnake([]);
+        showSnake();
+      }).play();
+      
+      /*growSnake([]);
+      growSnake([]);
+      growSnake([]);
+      showSnake();
+      two.update();
+      showSnake();
+      two.update();*/
     };
+    };
+    main();
   </script>
 </body>
 
